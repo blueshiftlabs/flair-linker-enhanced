@@ -1,7 +1,7 @@
 {
 	"name": "Reddit Trading Flair Linker Enhanced",
 	"short_name": "Flair Linker",
-	"version": "1.14.328.3",
+	"version": "1.14.403.1",
 	"manifest_version": 2,
 	"description": "Adds additional functionality to flair on trade subreddits (SteamGameSwap, tf2trade, and Dota2Trade)",
 	"icons": {
@@ -9,12 +9,14 @@
 		 "48": "icon-48.png",
 		"128": "icon-128.png"
 	},
+	"permissions": [
+		"*://*.reddit.com/*",
+		"*://*.steamcommunity.com/*",
+		"*://steamrep.com/api_beta/*"
+	],
 	"content_scripts": [ {
-		"exclude_globs": [ ],
-		"exclude_matches": [ ],
-		"include_globs": [ "*://*.reddit.com/r/*" ],
 		"js": [ "FlairLinker.user.js" ],
-		"matches": [ "http://*/*", "https://*/*" ],
+		"matches": [ "*://*.reddit.com/*" ],
 		"run_at": "document_idle"
 	} ]
 }

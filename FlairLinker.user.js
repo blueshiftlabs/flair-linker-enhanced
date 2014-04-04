@@ -3,7 +3,7 @@
 // @author blueshiftlabs
 // @namespace http://blueshiftlabs.net/FlairLinker
 // @description Adds additional functionality to flair on trade subreddits (SteamGameSwap, tf2trade, and Dota2Trade)
-// @version 1.14.328.3
+// @version 1.14.403.1
 // @updateURL http://userscripts.org/scripts/source/145990.meta.js
 // @updateURL https://userscripts.org/scripts/source/145990.meta.js
 // @downloadURL http://userscripts.org/scripts/source/145990.user.js
