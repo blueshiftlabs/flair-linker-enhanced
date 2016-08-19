@@ -18,5 +18,9 @@
 		"js": [ "FlairLinker.user.js" ],
 		"matches": [ "*://*.reddit.com/*" ],
 		"run_at": "document_idle"
-	} ]
+	} ],
+   "background": {
+      "scripts": ["background.js"],
+      "persistent": false
+   },
 }
