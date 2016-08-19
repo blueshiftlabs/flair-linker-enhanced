@@ -8,6 +8,7 @@
 // @updateURL https://userscripts.org/scripts/source/145990.meta.js
 // @downloadURL http://userscripts.org/scripts/source/145990.user.js
 // @include *://*.reddit.com/r/*
+// @grant GM_xmlhttpRequest
 // @compatible Chrome, Greasemonkey
 // ==/UserScript==
 
@@ -202,7 +203,8 @@ var subreddits = {
 	'globaloffensivetrade': {
 		links: [
 			"<a href='http://steamcommunity.com/profiles/$1/inventory/#730' title='Inventory (Steam)'>steam</a>",
-			"<a href='http://tf2b.com/csgo/$1' title='Inventory (tf2b.com)'>tf2b</a>",
+			"<a href='http://csgo.exchange/id/$1' title='Inventory (csgo.exchange)'>exchange</a>",			
+			"<a href='http://csgolounge.com/profile?id=$1' title='Profile (CSGO Lounge)'>lounge</a>",
 		],
 		css: [
 			".flair { height: 16px !important; margin-top: 1px !important; margin-bottom: 1px !important; }",
@@ -213,6 +215,17 @@ var subreddits = {
 	'steamtradingcards': {
 		links: [
 			"<a href='http://steamcommunity.com/profiles/$1/inventory/#753_6' title='Inventory (Steam)'>steam</a>",
+		],
+		css: [
+			".flair { height: 16px !important; margin-top: 1px !important; margin-bottom: 1px !important; }",
+			".flair:hover { margin-top: 0 !important; margin-bottom: 0 !important; }",
+			".flair .flairinfo-panel { position: relative; top: -1px; }",
+		],
+	},
+	'h1z1market': {
+		links: [
+			"<a href='http://steamcommunity.com/profiles/$1/inventory/#433850' title='Inventory (King of the Kill)'>kotk</a>",
+			"<a href='http://steamcommunity.com/profiles/$1/inventory/#295110' title='Inventory (Just Survive)'>js</a>",
 		],
 		css: [
 			".flair { height: 16px !important; margin-top: 1px !important; margin-bottom: 1px !important; }",
@@ -431,7 +444,7 @@ function createInfoPanel(xmlDoc, subreddit, flair) {
 	}		
 	
 	var userlink = $('<a/>')
-		.attr('href', 'http://steamcommunity.com/profiles/'+id64)
+		.attr('href', 'https://steamcommunity.com/profiles/'+id64)
 		.attr('title', $.trim(tooltip))
 		.css('color', color)
 		.html(user)
@@ -452,7 +465,7 @@ function createInfoPanel(xmlDoc, subreddit, flair) {
 		
 	
 	var steamRepIcon = 
-		createLinkButton('rep-refresh', 'SteamRep', 'http://steamrep.com/profiles/'+id64)
+		createLinkButton('rep-refresh', 'SteamRep', 'https://steamrep.com/profiles/'+id64)
 		.on('click.srlookup', function(e) {
 			window.open($(this)[0].href)
 			e.preventDefault()
@@ -580,7 +593,7 @@ function createInfoPanel(xmlDoc, subreddit, flair) {
 	return panel
 }
 
-var steamURLRegex = /https?:\/\/(www\.)?steamcommunity\.com\/(id|profiles)\/[0-9a-zA-Z_-]+/i
+var steamURLRegex = /https?:\/\/(?:www\.)?(steamcommunity\.com\/(id|profiles)\/[0-9a-zA-Z_-]+)/i
 
 function handleFlair(sr, elt) {
 	var steamURLMatch = steamURLRegex.exec(elt.attr("title") || elt.attr("steamid"))
@@ -600,33 +613,59 @@ function handleFlair(sr, elt) {
 	
 	elt.prev('.flairinfo-refresh').remove()
 	elt.before(refresh)
+  
+  var successfulLookup = function(data) {
+      if (data !== "undefined" && data !== null) {
+        if ("string" == typeof data) {
+          data = $.parseXML(data);
+        }
+    		var panel = createInfoPanel($(data), sr, $(elt))
+    		var state = panel.onlineState.replace(/\w\S*/g, function(txt){ return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase() })
+    		refresh
+    			.attr('title', state + ' (Click to refresh)')
+    			.removeClass('flairinfo-imagebutton-icon-loading')
+    			.addClass('flairinfo-imagebutton-icon-'+panel.onlineState)
+    			
+    		elt.empty()
+    			.attr({
+    				'flair-linked': '',
+    				'steamid': steamURL,
+    				'title': ''
+    			})
+    			.append($('<span class="flairinfo-shimpanel"/>'))
+    			.append(panel)
+      }
+      else {
+    		refresh
+    			.attr('title', 'Steam Community lookup error\nClick to retry')
+    			.removeClass('flairinfo-imagebutton-icon-loading')
+    			.addClass('flairinfo-imagebutton-icon-error')            
+      }
+  };
+  var failedLookup = function() {
+    successfulLookup(null);
+  }
+  
+  // use jquery if we're in GreaseMonkey/Firefox
+  if (typeof GM_xmlhttpRequest !== "undefined")	{
+  	$.ajax({
+  		url: steamURL,
+  		data: { xml: 1 },
+  		context: elt
+  	}).error(failedLookup).success(successfulLookup)
+  }
+  else {
+    // NOTE: Because Steam community XML redirects to a non-https link, we
+    //       will get security errors in Chrome unless we execute on the 
+    //       background page rather than the https page.
+    chrome.runtime.sendMessage({
+        action: 'xhttp',
+        url: steamURL,
+        data: "?xml=1"
+    }, successfulLookup);			
+    
+  }
 	
-	$.ajax({
-		url: steamURL,
-		data: { xml: 1 },
-		context: elt
-	}).error(function(xhr, status, error) {
-		refresh
-			.attr('title', 'Steam Community lookup error\nClick to retry')
-			.removeClass('flairinfo-imagebutton-icon-loading')
-			.addClass('flairinfo-imagebutton-icon-error')
-	}).success(function(data) {
-		var panel = createInfoPanel($(data), sr, $(this))
-		var state = panel.onlineState.replace(/\w\S*/g, function(txt){ return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase() })
-		refresh
-			.attr('title', state + ' (Click to refresh)')
-			.removeClass('flairinfo-imagebutton-icon-loading')
-			.addClass('flairinfo-imagebutton-icon-'+panel.onlineState)
-			
-		this.empty()
-			.attr({
-				'flair-linked': '',
-				'steamid': steamURL,
-				'title': ''
-			})
-			.append($('<span class="flairinfo-shimpanel"/>'))
-			.append(panel)
-	})
 }	
 
 $(function() {
@@ -657,7 +696,7 @@ $(function() {
 
 	// Steam says you need to put "Powered by Steam" on any page using the API...
 	var node = $('<p class="bottommenu"/>').append(
-		$('<a href="http://steampowered.com"/>').text(
+		$('<a href="https://steampowered.com"/>').text(
 			'Steam profile information powered by the Steam Web API.'
 		))
 	
